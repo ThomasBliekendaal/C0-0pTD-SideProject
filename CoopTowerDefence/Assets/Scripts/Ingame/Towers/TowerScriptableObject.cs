@@ -11,4 +11,6 @@ public class TowerScriptableObject : ScriptableObject
     public string towerDescription;
     public Mesh previewMesh;
     public TowerLocations.TowerPlacementLocation.PlacementType towerType;
+    public Vector2 tileOffsetX, tileOffsetY;
+    public Vector3 objectScale = Vector3.one;
 }

@@ -297,17 +297,15 @@ MonoBehaviour:
     position1_green: {x: 1.11, y: 0, z: 0.8}
     position2_yellow: {x: 5.17, y: 1.16, z: 5.04}
     Toweroffset: {x: 0, y: 0, z: 0}
-    placementType: 0
   - centerOffset: {x: -5.32, y: 1.04, z: -1.67}
     position1_green: {x: -3.34, y: -1.08, z: 0.2}
     position2_yellow: {x: 7.97, y: 1.91, z: 3.31}
     Toweroffset: {x: 0, y: 0, z: 0}
-    placementType: 1
-  towerSize: 1
-  disableGizmos: 0
+  towerSize: 0.5
   detectMask:
     serializedVersion: 2
     m_Bits: 311
+  disableGizmos: 0
 --- !u!1 &1581871508
 GameObject:
   m_ObjectHideFlags: 0

@@ -128,18 +128,18 @@ public class TowerLocations : MonoBehaviour
             for (int i = 0; i < placementLocations.Length; i++)
             {
                 TowerPlacementLocation loc = placementLocations[i];
-                Gizmos.color = (loc.placementType == TowerPlacementLocation.PlacementType.Tower) ? Color.blue : Color.red;
+                Gizmos.color = Color.blue;
                 Gizmos.DrawWireCube(GetCenter(loc.position1_green, loc.position2_yellow) + loc.centerOffset, GetCornerScale(loc.position1_green, loc.position2_yellow));
                 Gizmos.color = Color.green;
                 Gizmos.DrawCube(loc.position1_green + loc.centerOffset, Vector3.one * 0.08f);
                 Gizmos.color = Color.yellow;
                 Gizmos.DrawCube(loc.position2_yellow + loc.centerOffset, Vector3.one * 0.08f);
-                if(loc.placementType == TowerPlacementLocation.PlacementType.Trap)
-                {
-                    Gizmos.color = Color.green;
+                if(towerSize >= 0.1)
                     foreach (Vector3 point in GetAreaPoints(i))
-                        Gizmos.DrawSphere(point, towerSize / 4);
-                }
+                    {
+                        Gizmos.color = Color.blue;
+                        Gizmos.DrawWireCube(point, new Vector3(1,0,1) * towerSize);
+                    }
             }
     }
 
@@ -154,7 +154,6 @@ public class TowerLocations : MonoBehaviour
         public Vector3 position2_yellow = -Vector3.one;
         [Header("OtherOptions")]
         public Vector3 Toweroffset = Vector3.zero;
-        public PlacementType placementType;
         public enum PlacementType { Tower, Trap}
     }
 }

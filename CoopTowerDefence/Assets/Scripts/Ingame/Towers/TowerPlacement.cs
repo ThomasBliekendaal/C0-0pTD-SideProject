@@ -18,6 +18,7 @@ public class TowerPlacement : Photon.MonoBehaviour
     public string managerTag;
     TowerLocations towerLocations;
     public LayerMask towerTrapMask;
+    public int rotateAmount;
 
     //The start void
     /// It checks if it can find the manager with the Towerlocations.
@@ -42,7 +43,7 @@ public class TowerPlacement : Photon.MonoBehaviour
     }
 
     //PlacementCheck
-    /// 
+    /// Checks if you are trying to place an object, or trying to check if you are able to place one.
     public void CheckPlacement()
     {
         for (int i = 0; i < towerSelectInputs.Length; i++)
@@ -51,6 +52,7 @@ public class TowerPlacement : Photon.MonoBehaviour
                 isPlacing = true;
                 currentlyPlacingInput = i;
                 previewObject.GetComponent<MeshFilter>().mesh = availableTowers[i].previewMesh;
+                previewObject.transform.localScale = availableTowers[i].objectScale;
                 break;
             }
         if (isPlacing)
@@ -66,30 +68,70 @@ public class TowerPlacement : Photon.MonoBehaviour
                 Debug.DrawRay(cam.transform.position, cam.transform.forward * placementRange);
                 if (Physics.Raycast(cam.transform.position, cam.transform.forward, out hit, placementRange))
                 {
+                    int area = 0;
                     bool foundSpot = false;
                     Vector3 spot = new Vector3();
+                    Vector3 pos1 = new Vector3();
+                    Vector3 pos2 = new Vector3();
                     for (int i = 0; i < towerLocations.placementLocations.Length; i++)
                     {
-                        Vector3 pos1 = towerLocations.placementLocations[i].position1_green + towerLocations.placementLocations[i].centerOffset;
-                        Vector3 pos2 = towerLocations.placementLocations[i].position2_yellow + towerLocations.placementLocations[i].centerOffset;
-                        if (TowerLocations.IsInBetween(hit.point, pos1, pos2) && towerLocations.placementLocations[i].placementType == availableTowers[currentlyPlacingInput].towerType)
+                        pos1 = towerLocations.placementLocations[i].position1_green + towerLocations.placementLocations[i].centerOffset;
+                        pos2 = towerLocations.placementLocations[i].position2_yellow + towerLocations.placementLocations[i].centerOffset;
+                        if (TowerLocations.IsInBetween(hit.point, pos1, pos2))
                         {
-                            spot = (availableTowers[currentlyPlacingInput].towerType == TowerLocations.TowerPlacementLocation.PlacementType.Trap) ? towerLocations.GetPlacementPoint(hit.point, i) : towerLocations.StraightDownPoint(hit.point, i); ;
+                            spot = (availableTowers[currentlyPlacingInput].towerType == TowerLocations.TowerPlacementLocation.PlacementType.Trap) ? towerLocations.GetPlacementPoint(hit.point, i) : towerLocations.StraightDownPoint(hit.point, i);
                             foundSpot = true;
+                            area = i;
                             break;
                         }
                     }
                     if (foundSpot)
                     {
+                        //Rotation
+                        if (Input.GetButtonDown("Mouse ScrollWheel"))
+                            rotateAmount += (Input.GetAxis("Mouse ScrollWheel") > 0) ? 1 : -1;
+
+                        canPlace = true;
+                        //X offset check
+                        if (availableTowers[currentlyPlacingInput].tileOffsetX != Vector2.zero)
+                            for (int x = Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetX.x); x < Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetX.y + 1); x++)
+                            {
+                                Vector3 checkPos = spot + (previewObject.transform.right * towerLocations.towerSize * x);
+                                //Z offset check
+                                if (availableTowers[currentlyPlacingInput].tileOffsetY != Vector2.zero)
+                                    for (int z = Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetY.x); z < Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetY.y + 1); z++)
+                                    {
+                                        if (z == 0)
+                                            continue;
+                                        Vector3 otherCheckPos = checkPos + (previewObject.transform.forward * towerLocations.towerSize * z);
+                                        if (Physics.CheckBox(otherCheckPos, Vector3.one * towerLocations.towerSize * 0.1f, Quaternion.identity, towerTrapMask))
+                                            canPlace = false;
+
+                                        if (!TowerLocations.IsInBetween(otherCheckPos, pos1, pos2))
+                                            canPlace = false;
+                                    }
+
+                                if (x == 0)
+                                    continue;
+                                if (Physics.CheckBox(checkPos, Vector3.one * towerLocations.towerSize * 0.1f, Quaternion.identity, towerTrapMask))
+                                    canPlace = false;
+
+                                if (!TowerLocations.IsInBetween(checkPos, pos1, pos2))
+                                    canPlace = false;
+                            }
+
+                        if (Physics.CheckBox(spot, Vector3.one * towerLocations.towerSize * 0.1f, Quaternion.identity, towerTrapMask))
+                            canPlace = false;
                         previewObject.SetActive(true);
                         previewObject.transform.position = spot;
                         previewObject.transform.rotation = Quaternion.identity;
-                        canPlace = !Physics.CheckBox(spot, Vector3.one * towerLocations.towerSize * 0.4f, Quaternion.identity, towerTrapMask);
                         previewObject.GetComponent<Renderer>().material = (canPlace) ? nonPlacedMaterial : ubstructedMaterial;
+                        previewObject.transform.Rotate(Vector3.up * rotateAmount * 90);
                         if (Input.GetButtonDown("Fire1") && canPlace)
                         {
                             isPlacing = false;
-                            PhotonNetwork.Instantiate(availableTowers[currentlyPlacingInput].towerName, spot, Quaternion.identity, 0);
+                            GameObject p = PhotonNetwork.Instantiate(availableTowers[currentlyPlacingInput].towerName, spot, Quaternion.identity, 0);
+                            p.transform.Rotate(Vector3.up * rotateAmount * 90);
                             previewObject.SetActive(false);
                         }
                     }
@@ -99,6 +141,62 @@ public class TowerPlacement : Photon.MonoBehaviour
                 else
                 {
                     previewObject.SetActive(false);
+                }
+            }
+        }
+    }
+
+    public void OnDrawGizmos()
+    {
+        if (isPlacing)
+        {
+            RaycastHit hit = new RaycastHit();
+            Debug.DrawRay(cam.transform.position, cam.transform.forward * placementRange);
+            if (Physics.Raycast(cam.transform.position, cam.transform.forward, out hit, placementRange))
+            {
+                int area = 0;
+                bool foundSpot = false;
+                Vector3 spot = new Vector3();
+                Vector3 pos1 = new Vector3();
+                Vector3 pos2 = new Vector3();
+                for (int i = 0; i < towerLocations.placementLocations.Length; i++)
+                {
+                    pos1 = towerLocations.placementLocations[i].position1_green + towerLocations.placementLocations[i].centerOffset;
+                    pos2 = towerLocations.placementLocations[i].position2_yellow + towerLocations.placementLocations[i].centerOffset;
+                    if (TowerLocations.IsInBetween(hit.point, pos1, pos2))
+                    {
+                        spot = (availableTowers[currentlyPlacingInput].towerType == TowerLocations.TowerPlacementLocation.PlacementType.Trap) ? towerLocations.GetPlacementPoint(hit.point, i) : towerLocations.StraightDownPoint(hit.point, i);
+                        foundSpot = true;
+                        area = i;
+                        break;
+                    }
+                }
+                if (foundSpot)
+                {
+                    //Rotation
+                    if (Input.GetAxisRaw("Mouse ScrollWheel") != 0)
+                        rotateAmount += (Input.GetAxis("Mouse ScrollWheel") > 0) ? 1 : -1;
+
+                    canPlace = true;
+                    //X offset check
+                    if (availableTowers[currentlyPlacingInput].tileOffsetX != Vector2.zero)
+                        for (int x = Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetX.x); x < Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetX.y) + 1; x++)
+                        {
+                            Vector3 checkPos = spot + (previewObject.transform.right * x * towerLocations.towerSize);
+                            //Z offset check
+                            if (availableTowers[currentlyPlacingInput].tileOffsetY != Vector2.zero)
+                                for (int z = Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetY.x); z < Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetY.y) + 1; z++)
+                                {
+                                    if (z == 0)
+                                        continue;
+                                    Vector3 otherCheckPos = checkPos + (previewObject.transform.forward * z * towerLocations.towerSize);
+                                    Gizmos.DrawSphere(otherCheckPos, towerLocations.towerSize);
+                                }
+
+                            if (x == 0)
+                                continue;
+                            Gizmos.DrawSphere(checkPos, towerLocations.towerSize);
+                        }
                 }
             }
         }

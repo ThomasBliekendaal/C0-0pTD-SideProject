@@ -16,3 +16,6 @@ MonoBehaviour:
   towerDescription: 
   previewMesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
   towerType: 0
+  tileOffsetX: {x: 0, y: 0}
+  tileOffsetY: {x: 0, y: 0}
+  objectScale: {x: 1, y: 1, z: 1}

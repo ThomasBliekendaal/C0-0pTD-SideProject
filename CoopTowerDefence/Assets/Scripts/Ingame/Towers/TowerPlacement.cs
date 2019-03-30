@@ -75,8 +75,9 @@ public class TowerPlacement : Photon.MonoBehaviour
                     Vector3 pos2 = new Vector3();
                     for (int i = 0; i < towerLocations.placementLocations.Length; i++)
                     {
-                        pos1 = towerLocations.placementLocations[i].position1_green + towerLocations.placementLocations[i].centerOffset;
-                        pos2 = towerLocations.placementLocations[i].position2_yellow + towerLocations.placementLocations[i].centerOffset;
+                        TowerLocations.TowerPlacementLocation loc = towerLocations.placementLocations[i];
+                        pos1 = loc.gridPlacementCorner.position;
+                        pos2 = TowerLocations.GetOtherCornerPosition(loc.gridPlacementCorner.position,loc.tileAmount,loc.height,towerLocations.towerSize,loc.invertX,loc.invertZ);
                         if (TowerLocations.IsInBetween(hit.point, pos1, pos2))
                         {
                             spot = (availableTowers[currentlyPlacingInput].towerType == TowerLocations.TowerPlacementLocation.PlacementType.Trap) ? towerLocations.GetPlacementPoint(hit.point, i) : towerLocations.StraightDownPoint(hit.point, i);
@@ -88,8 +89,11 @@ public class TowerPlacement : Photon.MonoBehaviour
                     if (foundSpot)
                     {
                         //Rotation
-                        if (Input.GetButtonDown("Mouse ScrollWheel"))
+                        if (Input.GetAxis("Mouse ScrollWheel") != 0)
+                        {
                             rotateAmount += (Input.GetAxis("Mouse ScrollWheel") > 0) ? 1 : -1;
+                            Debug.Log(rotateAmount);
+                        }
 
                         canPlace = true;
                         //X offset check
@@ -141,62 +145,6 @@ public class TowerPlacement : Photon.MonoBehaviour
                 else
                 {
                     previewObject.SetActive(false);
-                }
-            }
-        }
-    }
-
-    public void OnDrawGizmos()
-    {
-        if (isPlacing)
-        {
-            RaycastHit hit = new RaycastHit();
-            Debug.DrawRay(cam.transform.position, cam.transform.forward * placementRange);
-            if (Physics.Raycast(cam.transform.position, cam.transform.forward, out hit, placementRange))
-            {
-                int area = 0;
-                bool foundSpot = false;
-                Vector3 spot = new Vector3();
-                Vector3 pos1 = new Vector3();
-                Vector3 pos2 = new Vector3();
-                for (int i = 0; i < towerLocations.placementLocations.Length; i++)
-                {
-                    pos1 = towerLocations.placementLocations[i].position1_green + towerLocations.placementLocations[i].centerOffset;
-                    pos2 = towerLocations.placementLocations[i].position2_yellow + towerLocations.placementLocations[i].centerOffset;
-                    if (TowerLocations.IsInBetween(hit.point, pos1, pos2))
-                    {
-                        spot = (availableTowers[currentlyPlacingInput].towerType == TowerLocations.TowerPlacementLocation.PlacementType.Trap) ? towerLocations.GetPlacementPoint(hit.point, i) : towerLocations.StraightDownPoint(hit.point, i);
-                        foundSpot = true;
-                        area = i;
-                        break;
-                    }
-                }
-                if (foundSpot)
-                {
-                    //Rotation
-                    if (Input.GetAxisRaw("Mouse ScrollWheel") != 0)
-                        rotateAmount += (Input.GetAxis("Mouse ScrollWheel") > 0) ? 1 : -1;
-
-                    canPlace = true;
-                    //X offset check
-                    if (availableTowers[currentlyPlacingInput].tileOffsetX != Vector2.zero)
-                        for (int x = Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetX.x); x < Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetX.y) + 1; x++)
-                        {
-                            Vector3 checkPos = spot + (previewObject.transform.right * x * towerLocations.towerSize);
-                            //Z offset check
-                            if (availableTowers[currentlyPlacingInput].tileOffsetY != Vector2.zero)
-                                for (int z = Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetY.x); z < Mathf.RoundToInt(availableTowers[currentlyPlacingInput].tileOffsetY.y) + 1; z++)
-                                {
-                                    if (z == 0)
-                                        continue;
-                                    Vector3 otherCheckPos = checkPos + (previewObject.transform.forward * z * towerLocations.towerSize);
-                                    Gizmos.DrawSphere(otherCheckPos, towerLocations.towerSize);
-                                }
-
-                            if (x == 0)
-                                continue;
-                            Gizmos.DrawSphere(checkPos, towerLocations.towerSize);
-                        }
                 }
             }
         }

@@ -34,9 +34,8 @@ public class TowerLocations : MonoBehaviour
     public Vector3 StraightDownPoint(Vector3 position, int index)
     {
         TowerPlacementLocation loc = placementLocations[index];
-        Vector3 scale = GetCornerScale(loc.position1_green, loc.position2_yellow);
         RaycastHit hit = new RaycastHit();
-        if (Physics.Raycast(position + Vector3.up * scale.y, Vector3.down, out hit, scale.y, detectMask))
+        if (Physics.Raycast(position + Vector3.up * loc.height, Vector3.down, out hit, loc.height + (loc.height * 0.01f), detectMask))
             return hit.point;
         return new Vector3();
     }
@@ -48,18 +47,20 @@ public class TowerLocations : MonoBehaviour
     public Vector3[] GetAreaPoints(int index)
     {
         TowerPlacementLocation loc = placementLocations[index];
+        if (loc.gridPlacementCorner == null) return new Vector3[0];
+        Vector3 otherCorner = GetOtherCornerPosition(loc.gridPlacementCorner.position, loc.tileAmount, loc.height, towerSize, loc.invertX, loc.invertZ);
         List<Vector3> points = new List<Vector3>();
-        Vector3 center = GetCenter(loc.position1_green, loc.position2_yellow) + loc.centerOffset;
-        Vector3 scale = GetCornerScale(loc.position1_green, loc.position2_yellow);
+        Vector3 center = GetCenter(loc.gridPlacementCorner.position, otherCorner);
+        Vector3 scale = GetCornerScale(loc.gridPlacementCorner.position, otherCorner);
 
         /// Gets the maximum of points that fits in the given area.
-        Vector2 maximum = new Vector2(Mathf.Floor(scale.x / towerSize), Mathf.Floor(scale.z / towerSize));
+        Vector2 maximum = loc.tileAmount;
         for (int x = 0; x < maximum.x; x++)
             for (int z = 0; z < maximum.y; z++)
             {
-                Vector3 position = new Vector3(x * towerSize + (towerSize / 2), 0, z * towerSize + towerSize / 2) + center - (scale / 2) + loc.Toweroffset;
+                Vector3 position = new Vector3(x * towerSize + (towerSize / 2), 0, z * towerSize + towerSize / 2) + center - (scale / 2);
                 RaycastHit hit = new RaycastHit();
-                if (Physics.Raycast(position + Vector3.up * scale.y, Vector3.down, out hit, scale.y,detectMask))
+                if (Physics.Raycast(position + Vector3.up * scale.y, Vector3.down, out hit, scale.y + (loc.height * 0.01f), detectMask))
                     points.Add(hit.point);
             }
         return points.ToArray();
@@ -67,9 +68,9 @@ public class TowerLocations : MonoBehaviour
 
     //Calculates the center between 2 points
     /// This is just a lerp to get the point in between 2 points.
-    public static Vector3 GetCenter(Vector3 pos1, Vector3 pos2)
+    public static Vector3 GetCenter(Vector3 corner1, Vector3 corner2)
     {
-        return Vector3.Lerp(pos1, pos2, 0.5f);
+        return Vector3.Lerp(corner1, corner2, 0.5f);
     }
 
     //Calculates the scale for the 2 given corners
@@ -99,6 +100,7 @@ public class TowerLocations : MonoBehaviour
     /// Uses the void FloatInBetween for each axis.
     public static bool IsInBetween(Vector3 checkPos, Vector3 pos1, Vector3 pos2)
     {
+        pos1 = new Vector3(pos1.x, pos1.y - 0.05f, pos1.z);
         //X
         if (pos1.x == pos2.x && checkPos.x != pos1.x)
             return false;
@@ -120,6 +122,12 @@ public class TowerLocations : MonoBehaviour
         return true;
     }
 
+    //Calculates the other corner
+    public static Vector3 GetOtherCornerPosition(Vector3 corner, Vector2 amount, float height, float tileSize, bool invertX, bool invertZ)
+    {
+        return corner + new Vector3(amount.x * tileSize * (invertX ? 1 : -1), height, amount.y * tileSize * (invertZ ? 1 : -1));
+    }
+
     //Gizmos
     /// Draws gizmos for the area's and available spots to make it easier to place the area's in the inspector.
     public void OnDrawGizmosSelected()
@@ -128,12 +136,11 @@ public class TowerLocations : MonoBehaviour
             for (int i = 0; i < placementLocations.Length; i++)
             {
                 TowerPlacementLocation loc = placementLocations[i];
+                if (loc.gridPlacementCorner == null) continue;
+                Vector3 otherCorner = GetOtherCornerPosition(loc.gridPlacementCorner.position, loc.tileAmount, loc.height, towerSize, loc.invertX, loc.invertZ);
+
                 Gizmos.color = Color.blue;
-                Gizmos.DrawWireCube(GetCenter(loc.position1_green, loc.position2_yellow) + loc.centerOffset, GetCornerScale(loc.position1_green, loc.position2_yellow));
-                Gizmos.color = Color.green;
-                Gizmos.DrawCube(loc.position1_green + loc.centerOffset, Vector3.one * 0.08f);
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawCube(loc.position2_yellow + loc.centerOffset, Vector3.one * 0.08f);
+                Gizmos.DrawWireCube(GetCenter(loc.gridPlacementCorner.position,otherCorner), GetCornerScale(loc.gridPlacementCorner.position, otherCorner));
                 if(towerSize >= 0.1)
                     foreach (Vector3 point in GetAreaPoints(i))
                     {
@@ -149,11 +156,11 @@ public class TowerLocations : MonoBehaviour
     public class TowerPlacementLocation
     {
         [Header("Position")]
-        public Vector3 centerOffset;
-        public Vector3 position1_green = Vector3.one;
-        public Vector3 position2_yellow = -Vector3.one;
-        [Header("OtherOptions")]
-        public Vector3 Toweroffset = Vector3.zero;
+        public Transform gridPlacementCorner;
+        public Vector2 tileAmount;
+        public float height;
+        public bool invertX;
+        public bool invertZ;
         public enum PlacementType { Tower, Trap}
     }
 }
